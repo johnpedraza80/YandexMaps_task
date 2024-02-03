@@ -5,7 +5,6 @@ from PIL import Image
 from io import BytesIO
 import sys
 from PyQt5.QtCore import Qt
-from PyQt5 import QtCore
 
 
 
@@ -17,7 +16,7 @@ class MapView(QWidget):
         super(MapView, self).__init__()
 
         self.setFixedSize(700, 700)
-        self.l = 'map'
+        self.l1 = 'map'
         self.map_label = QLabel(self)
 
         self.map_label.resize(700, 600)
@@ -41,33 +40,25 @@ class MapView(QWidget):
         self.buttton_group.addButton(self.gibrid_button)
         self.buttton_group.buttonClicked.connect(self.change_l_param)
 
-
     def change_l_param(self, button):
-        print(button.text())
+
         if button.text() == "Спутник":
-            self.l = "sat"
+            self.l1 = "sat"
         elif button.text() == "Схема":
-            self.l = "map"
+            self.l1 = "map"
         elif button.text() == "Гибрид":
-            self.l = "sat,skl"
+            self.l1 = "sat,skl"
         self.maprequest()
-
-
-
-
-
 
     def maprequest(self):
         url = "http://static-maps.yandex.ru/1.x/"
         params = {
             "ll": f"{self.COORDS_X},{self.COORDS_y}",
             "spn": ",".join([str(self.MASHTAB), str(self.MASHTAB)]),
-             "l": self.l
-
+            "l": self.l1
 
         }
         response = requests.get(url, params=params)
-        print(response.url)
         yandex_map = Image.open(BytesIO(response.content))
         yandex_map.save("map.png")
         self.pixmap = QPixmap('map.png').scaled(700, 600)
@@ -79,7 +70,7 @@ class MapView(QWidget):
                 self.MASHTAB *= 0.1
 
                 self.maprequest()
-        elif event.key() == Qt.Key_Down:
+        if event.key() == Qt.Key_Down:
             if self.MASHTAB < 50.0:
 
                 self.MASHTAB /= 0.1
@@ -96,17 +87,12 @@ class MapView(QWidget):
             self.COORDS_X += 0.1
             self.maprequest()
         if event.key() == Qt.Key_A:
-            print("Frw")
             self.COORDS_X -= 0.1
             self.maprequest()
 
 
-
-
 def except_hook(cls, exception, traceback):
     sys.__excepthook__(cls, exception, traceback)
-
-
 
 
 if __name__ == '__main__':
