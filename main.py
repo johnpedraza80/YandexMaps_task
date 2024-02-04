@@ -1,5 +1,5 @@
 import requests
-from PyQt5.QtWidgets import QWidget, QApplication, QLabel, QButtonGroup, QPushButton
+from PyQt5.QtWidgets import QWidget, QApplication, QLabel, QButtonGroup, QPushButton, QLineEdit
 from PyQt5.QtGui import QPixmap
 from PIL import Image
 from io import BytesIO
@@ -7,10 +7,10 @@ import sys
 from PyQt5.QtCore import Qt
 
 
-
 class MapView(QWidget):
     COORDS_X, COORDS_y = 37.588392, 55.734036
     MASHTAB = 0.05
+    flag = False
 
     def __init__(self):
         super(MapView, self).__init__()
@@ -29,16 +29,50 @@ class MapView(QWidget):
         self.sputnik_button.move(50, 650)
         self.sputnik_button.resize(100, 20)
         self.shema_button = QPushButton("Схема", self)
-        self.shema_button.move(170, 650)
+        self.shema_button.move(300, 650)
         self.shema_button.resize(100, 20)
         self.gibrid_button = QPushButton("Гибрид", self)
-        self.gibrid_button.move(300, 650)
+        self.gibrid_button.move(500, 650)
 
-        self.sputnik_button.resize(100, 20)
         self.buttton_group.addButton(self.sputnik_button)
         self.buttton_group.addButton(self.shema_button)
         self.buttton_group.addButton(self.gibrid_button)
         self.buttton_group.buttonClicked.connect(self.change_l_param)
+
+        self.address_request = QLineEdit("Введите адрес", self)
+        self.address_request.move(10, 610)
+        self.address_request.resize(100, 20)
+        self.search_button = QPushButton("Поиск", self)
+        self.search_button.move(115, 610)
+        self.search_button.resize(60, 20)
+        self.search_button.clicked.connect(self.search_address)
+
+
+    def search_address(self):
+        address = self.address_request.text()
+        geocoder_api_server = "http://geocode-maps.yandex.ru/1.x/"
+
+        geocoder_params = {
+            "apikey": "40d1649f-0493-4b70-98ba-98533de7710b",
+            "geocode": address,
+            "format": "json"}
+
+        response = requests.get(geocoder_api_server, params=geocoder_params)
+
+        if not response:
+            # обработка ошибочной ситуации
+            pass
+        else:
+            # Преобразуем ответ в json-объект
+            json_response = response.json()
+            # Получаем первый топоним из ответа геокодера.
+            toponym = json_response["response"]["GeoObjectCollection"][
+                "featureMember"][0]["GeoObject"]
+            # Координаты центра топонима:
+            toponym_coodrinates = toponym["Point"]["pos"]
+            self.flag = True
+            self.COORDS_X, self.COORDS_y = toponym_coodrinates.split()
+            self.maprequest()
 
     def change_l_param(self, button):
 
@@ -58,6 +92,10 @@ class MapView(QWidget):
             "l": self.l1
 
         }
+        if self.flag:
+            params["pt"] = f"{self.COORDS_X},{self.COORDS_y}"
+
+
         response = requests.get(url, params=params)
         yandex_map = Image.open(BytesIO(response.content))
         yandex_map.save("map.png")
