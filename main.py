@@ -9,7 +9,9 @@ from PyQt5.QtCore import Qt
 
 class MapView(QWidget):
     COORDS_X, COORDS_y = 37.588392, 55.734036
+    pt_x, pt_y = 0, 0
     MASHTAB = 0.05
+    step = 1
     flag = False
 
     def __init__(self):
@@ -47,6 +49,19 @@ class MapView(QWidget):
         self.search_button.resize(60, 20)
         self.search_button.clicked.connect(self.search_address)
 
+        self.clean_pt = QPushButton("Сброс метки", self)
+        self.clean_pt.move(570, 610)
+        self.clean_pt.resize(100, 20)
+        self.clean_pt.clicked.connect(self.clean)
+
+        self.full_address = QLabel(self)
+        self.full_address.move(200, 610)
+        self.full_address.resize(400, 20)
+
+    def clean(self):
+        self.flag = False
+        self.full_address.setText("")
+        self.maprequest()
 
     def search_address(self):
         address = self.address_request.text()
@@ -68,10 +83,13 @@ class MapView(QWidget):
             # Получаем первый топоним из ответа геокодера.
             toponym = json_response["response"]["GeoObjectCollection"][
                 "featureMember"][0]["GeoObject"]
+            toponym_address = toponym["metaDataProperty"]["GeocoderMetaData"]["text"]
             # Координаты центра топонима:
             toponym_coodrinates = toponym["Point"]["pos"]
             self.flag = True
-            self.COORDS_X, self.COORDS_y = toponym_coodrinates.split()
+            self.COORDS_X, self.COORDS_y = map(float, toponym_coodrinates.split())
+            self.pt_x, self.pt_y = self.COORDS_X, self.COORDS_y
+            self.full_address.setText(toponym_address)
             self.maprequest()
 
     def change_l_param(self, button):
@@ -93,8 +111,7 @@ class MapView(QWidget):
 
         }
         if self.flag:
-            params["pt"] = f"{self.COORDS_X},{self.COORDS_y}"
-
+            params["pt"] = f"{self.pt_x},{self.pt_y}"
 
         response = requests.get(url, params=params)
         yandex_map = Image.open(BytesIO(response.content))
@@ -106,26 +123,27 @@ class MapView(QWidget):
         if event.key() == Qt.Key_Up:
             if self.MASHTAB > 0.0005:
                 self.MASHTAB *= 0.1
+                self.step /= 10
 
                 self.maprequest()
         if event.key() == Qt.Key_Down:
             if self.MASHTAB < 50.0:
-
+                self.step *= 10
                 self.MASHTAB /= 0.1
                 self.maprequest()
             else:
                 pass
         if event.key() == Qt.Key_W:
-            self.COORDS_y += 0.1
+            self.COORDS_y += (0.01 * self.step)
             self.maprequest()
         if event.key() == Qt.Key_S:
-            self.COORDS_y -= 0.1
+            self.COORDS_y -= (0.01 * self.step)
             self.maprequest()
         if event.key() == Qt.Key_D:
-            self.COORDS_X += 0.1
+            self.COORDS_X += (0.01 * self.step)
             self.maprequest()
         if event.key() == Qt.Key_A:
-            self.COORDS_X -= 0.1
+            self.COORDS_X -= (0.01 * self.step)
             self.maprequest()
 
 
